@@ -17,7 +17,7 @@ The connections from the microphone board are:
 * VDD  - 3V3
 * GND  - GND
 
-Then you just need to flash the [audio1.cpp] (https://github.com/rickkas7/photonAudioSample1/blob/master/audio1.cpp) file to your Photon. Make sure you edit the IP address of your server! 
+Then you just need to flash the [audio1.cpp] (https://github.com/rickkas7/photonAudio/blob/master/audio1/audio1.cppp) file to your Photon. Make sure you edit the IP address of your server! 
 
 The code also requires the [SparkIntervalTimer] (https://github.com/pkourany/SparkIntervalTimer) library, so make sure you add that in Particle Build (Web IDE) or do whatever is necessary for the build environment you are using.
 
@@ -26,7 +26,7 @@ The code has many comments and should be self-explanatory.
 
 ## Server Side
 
-The server-side code is written in [node.js] (https://nodejs.org). You'll want to copy the [audioserver.js] (https://github.com/rickkas7/photonAudioSample1/blob/master/audioserver.js) file to your computer. 
+The server-side code is written in [node.js] (https://nodejs.org). You'll want to copy the [audioserver.js] (https://github.com/rickkas7/photonAudio/blob/master/audio1/audioserver.js) file to your computer. 
 
 It requires the standard Node 4.5.0 features plus the [wav package] (https://github.com/TooTallNate/node-wav) to output the audio files. You install it using:
 
