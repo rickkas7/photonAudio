@@ -31,8 +31,8 @@ const size_t SAMPLE_BUF_SIZE = 2048;
 // This is the pin the microphone is connected to.
 const int SAMPLE_PIN = A0;
 
-// The audio sample rate. The minimum is probably 8000 for minimally acceptable audio quality, and
-// a maximum of 48000 because of timer ISR overhead.
+// The audio sample rate. The minimum is probably 8000 for minimally acceptable audio quality.
+// Not sure what the maximum rate is, but it's pretty high.
 const long SAMPLE_RATE = 32000;
 
 // If you don't hit the setup button to stop recording, this is how long to go before turning it
@@ -139,7 +139,7 @@ void ADCDMA::start(size_t freqHZ) {
 	DMA_Init(DMA2_Stream0, &DMA_InitStructure);
 
 	// Don't enable DMA Stream Half / Transfer Complete interrupt
-	// Since we went out of loop anyway, there's no real advantage to using the interrupt, and as
+	// Since we want to write out of loop anyway, there's no real advantage to using the interrupt, and as
 	// far as I can tell, you can't set the interrupt handler for DMA2_Stream0 without modifying
 	// system firmware because there's no built-in handler for it.
 	// DMA_ITConfig(DMA2_Stream0, DMA_IT_TC | DMA_IT_HT, ENABLE);
@@ -199,9 +199,6 @@ ADCDMA adcDMA(A0, samples, SAMPLE_BUF_SIZE);
 void setup() {
 	Serial.begin(9600);
 
-	// This determines the number of samples to average to get a single sample
-	setADCSampleTime(ADC_SampleTime_3Cycles);
-
 	// Register handler to handle clicking on the SETUP button
 	System.on(button_click, buttonHandler);
 	pinMode(D7, OUTPUT);
@@ -223,10 +220,6 @@ void loop() {
 			// Connected
 			adcDMA.start(SAMPLE_RATE);
 
-			// We want to sample at 16 KHz
-			// 16000 samples/sec = 62.5 microseconds
-			// The minimum timer period is about 10 micrseconds
-			// timer.begin(timerISR, 1000000 / SAMPLE_RATE, uSec);
 			Serial.println("starting");
 
 			recordingStart = millis();
