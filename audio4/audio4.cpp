@@ -140,7 +140,7 @@ void ADCDMA::start(size_t freqHZ) {
 	ADC_CommonInitStructure.ADC_Mode = ADC_DualMode_RegSimult;
 	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div2;
 	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_1;
-	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
+	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_14Cycles;
 	ADC_CommonInit(&ADC_CommonInitStructure);
 
 	// ADC1 configuration
@@ -153,17 +153,17 @@ void ADCDMA::start(size_t freqHZ) {
 	ADC_InitStructure.ADC_NbrOfConversion = 3;
 	ADC_Init(ADC1, &ADC_InitStructure);
 
-	ADC_RegularChannelConfig(ADC1, PIN_MAP[A0].adc_channel, 1, ADC_SampleTime_3Cycles);
-	ADC_RegularChannelConfig(ADC1, PIN_MAP[A2].adc_channel, 2, ADC_SampleTime_3Cycles);
-	ADC_RegularChannelConfig(ADC1, PIN_MAP[A4].adc_channel, 3, ADC_SampleTime_3Cycles);
+	ADC_RegularChannelConfig(ADC1, PIN_MAP[A0].adc_channel, 1, ADC_SampleTime_28Cycles);
+	ADC_RegularChannelConfig(ADC1, PIN_MAP[A2].adc_channel, 2, ADC_SampleTime_28Cycles);
+	ADC_RegularChannelConfig(ADC1, PIN_MAP[A4].adc_channel, 3, ADC_SampleTime_28Cycles);
 
 	// ADC2 configuration - same
 	ADC_Init(ADC2, &ADC_InitStructure);
 
 	//
-	ADC_RegularChannelConfig(ADC2, PIN_MAP[A1].adc_channel, 1, ADC_SampleTime_3Cycles);
-    ADC_RegularChannelConfig(ADC2, PIN_MAP[A3].adc_channel, 2, ADC_SampleTime_3Cycles);
-    ADC_RegularChannelConfig(ADC2, PIN_MAP[A5].adc_channel, 3, ADC_SampleTime_3Cycles);
+	ADC_RegularChannelConfig(ADC2, PIN_MAP[A1].adc_channel, 1, ADC_SampleTime_28Cycles);
+    ADC_RegularChannelConfig(ADC2, PIN_MAP[A3].adc_channel, 2, ADC_SampleTime_28Cycles);
+    ADC_RegularChannelConfig(ADC2, PIN_MAP[A5].adc_channel, 3, ADC_SampleTime_28Cycles);
 
 	// Enable DMA request after last transfer (Multi-ADC mode)
 	ADC_MultiModeDMARequestAfterLastTransferCmd(ENABLE);
