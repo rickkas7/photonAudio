@@ -8,4 +8,5 @@
 
 [Example 4](https://github.com/rickkas7/photonAudio/tree/master/audio4/) is like Example 3, except it uploads 6 channels of 44.1KHz 16-bit samples to a server. The Javascript can save one of the streams to a wav file.  
 
+[Example 5](https://github.com/rickkas7/photonAudio/tree/master/audio5/) is like Example 3, except it captures samples into RAM. Once the output buffer is filled, the samples are printed to USB serial as decimal values. 
 

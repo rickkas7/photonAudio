@@ -1,3 +1,4 @@
 node_modules
 out
 *.bin
+.DS_Store

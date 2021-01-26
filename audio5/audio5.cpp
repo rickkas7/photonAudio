@@ -1,6 +1,8 @@
 #include "Particle.h"
 
 
+SYSTEM_MODE(MANUAL);
+
 // Tested with Adafruit 1713
 // Electret Microphone Amplifier - MAX9814 with Auto Gain Control
 // https://www.adafruit.com/products/1713
@@ -22,34 +24,29 @@
 
 void buttonHandler(system_event_t event, int data); // forward declaration
 
-// 2048 is a good size for this buffer. This is the number of samples; the number of bytes is twice
-// this, but only half the buffer is sent a time, and then each pair of samples is averaged, so
-// this results in 1024 byte writes from TCP, which is optimal.
-// This uses 4096 bytes of RAM, which is also reasonable.
-const size_t SAMPLE_BUF_SIZE = 2048;
+// 512 is a good size for this buffer. This is the number of samples; the number of bytes is twice
+// this, but only half the buffer is handled a time, and then each pair of samples is averaged.
+const size_t SAMPLE_BUF_SIZE = 512;
 
 // This is the pin the microphone is connected to.
-const int SAMPLE_PIN = A0;
+const int SAMPLE_PIN = A1;
 
 // The audio sample rate. The minimum is probably 8000 for minimally acceptable audio quality.
 // Not sure what the maximum rate is, but it's pretty high.
-const long SAMPLE_RATE = 32000;
-
-// If you don't hit the setup button to stop recording, this is how long to go before turning it
-// off automatically. The limit really is only the disk space available to receive the file.
-const unsigned long MAX_RECORDING_LENGTH_MS = 30000;
-
-// This is the IP Address and port that the audioServer.js node server is running on.
-IPAddress serverAddr = IPAddress(192,168,2,4);
-int serverPort = 7123;
-
+const long SAMPLE_RATE = 16000;
 
 uint16_t samples[SAMPLE_BUF_SIZE];
 
-TCPClient client;
-unsigned long recordingStart;
+// This is the size of the output buffer in 16-bit words (with 12-bit samples in it). This must
+// be small enough to fit in available RAM. 
+const size_t OUTPUT_BUF_SIZE = 16000;
 
-enum State { STATE_WAITING, STATE_CONNECT, STATE_RUNNING, STATE_FINISH };
+uint16_t output[OUTPUT_BUF_SIZE];
+size_t outputIndex = 0;
+size_t printIndex = 0;
+
+
+enum State { STATE_WAITING, STATE_START, STATE_RUNNING, STATE_FINISH, STATE_PRINT };
 State state = STATE_WAITING;
 
 //
@@ -167,8 +164,10 @@ void ADCDMA::start(size_t freqHZ) {
 	ADC_Init(ADC2, &ADC_InitStructure);
 
 	//
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 	ADC_RegularChannelConfig(ADC1, PIN_MAP[pin].adc_channel, 1, ADC_SampleTime_15Cycles);
     ADC_RegularChannelConfig(ADC2, PIN_MAP[pin].adc_channel, 1, ADC_SampleTime_15Cycles);
+    Serial.printlnf("using pin %d ADC channel %u", pin, PIN_MAP[pin].adc_channel);
 
 	// Enable DMA request after last transfer (Multi-ADC mode)
 	ADC_MultiModeDMARequestAfterLastTransferCmd(ENABLE);
@@ -211,26 +210,17 @@ void loop() {
 	switch(state) {
 	case STATE_WAITING:
 		// Waiting for the user to press the SETUP button. The setup button handler
-		// will bump the state into STATE_CONNECT
+		// will bump the state into STATE_START
 		break;
 
-	case STATE_CONNECT:
-		// Ready to connect to the server via TCP
-		if (client.connect(serverAddr, serverPort)) {
-			// Connected
-			adcDMA.start(SAMPLE_RATE);
+	case STATE_START:
+        Serial.println("starting");
+        outputIndex = 0;
+        digitalWrite(D7, HIGH);
 
-			Serial.println("starting");
+        adcDMA.start(SAMPLE_RATE);
 
-			recordingStart = millis();
-			digitalWrite(D7, HIGH);
-
-			state = STATE_RUNNING;
-		}
-		else {
-			Serial.println("failed to connect to server");
-			state = STATE_WAITING;
-		}
+        state = STATE_RUNNING;
 		break;
 
 	case STATE_RUNNING:
@@ -246,32 +236,14 @@ void loop() {
 		if (sendBuf != NULL) {
 			// There is a sample buffer to send
 
-			// Average the pairs of samples
-			for(size_t ii = 0, jj = 0; ii < SAMPLE_BUF_SIZE / 2; ii += 2, jj++) {
+			// Average the pairs of samples and copy to the output buffer
+			for(size_t ii = 0; ii < SAMPLE_BUF_SIZE / 2 && outputIndex < OUTPUT_BUF_SIZE; ii += 2) {
 				uint32_t sum = (uint32_t)sendBuf[ii] + (uint32_t)sendBuf[ii + 1];
-				sendBuf[jj] = (uint16_t)(sum / 2);
-			}
-
-			// Send here. We're actually sending 1/4 of the samples here, 1/2 of the
-			// samples buffer, and we've averaged each pair of samples, but the samples
-			// are 16 bits and client.write() takes bytes, so only / 2 here
-			int count = client.write((uint8_t *)sendBuf, SAMPLE_BUF_SIZE / 2);
-			if (count == SAMPLE_BUF_SIZE / 2) {
-				// Success
-			}
-			else
-			if (count == -16) {
-				// TCP Buffer full
-				Serial.printlnf("buffer full, discarding");
-			}
-			else {
-				// Error
-				Serial.printlnf("error writing %d", count);
-				state = STATE_FINISH;
-			}
+                output[outputIndex++] = (sum / 2);                
+            }
 		}
 
-		if (millis() - recordingStart >= MAX_RECORDING_LENGTH_MS) {
+		if (outputIndex >= OUTPUT_BUF_SIZE) {
 			state = STATE_FINISH;
 		}
 		break;
@@ -279,10 +251,19 @@ void loop() {
 	case STATE_FINISH:
 		digitalWrite(D7, LOW);
 		adcDMA.stop();
-		client.stop();
 		Serial.println("stopping");
-		state = STATE_WAITING;
+        printIndex = 0;
+		state = STATE_PRINT;
 		break;
+
+    case STATE_PRINT:
+        if (printIndex >= outputIndex) {
+            Serial.println("done");
+            state = STATE_WAITING;
+            break;
+        }
+        Serial.printlnf("%u", output[printIndex++]);
+        break;
 	}
 }
 
@@ -290,7 +271,7 @@ void loop() {
 void buttonHandler(system_event_t event, int data) {
 	switch(state) {
 	case STATE_WAITING:
-		state = STATE_CONNECT;
+		state = STATE_START;
 		break;
 
 	case STATE_RUNNING:

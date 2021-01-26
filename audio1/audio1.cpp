@@ -92,7 +92,7 @@ void loop() {
 
 			// We want to sample at 16 KHz
 			// 16000 samples/sec = 62.5 microseconds
-			// The minimum timer period is about 10 micrseconds
+			// The minimum timer period is about 10 microseconds
 			timer.begin(timerISR, 1000000 / SAMPLE_RATE, uSec);
 
 			recordingStart = millis();
